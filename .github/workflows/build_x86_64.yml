@@ -1,0 +1,46 @@
+name: Build OpenWrt Firmware - X86_64
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      config:
+        description: 'Input config script file name without ".sh". "all" to build all the configs.'
+        required: true
+        default: config/x86_64.sh
+  schedule:
+    - cron: '0 21 * * 5'
+
+env:
+  TZ: 'Asia/Shanghai'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+
+      - name: Maximize Build space
+        run: |
+            sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /usr/lib/jvm /opt/ghc
+            sudo -E apt-get -qq autoremove --purge
+            sudo -E apt-get -qq clean
+            echo "Free space:"
+            df -h
+
+      - name: Run build script
+        uses: ./
+
+      - name: After script
+        run: echo
+
+      - name: Upload OpenWrt Firmware to Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: firemware-openwrt-x86_64
+          files: ${{ github.workspace }}/bin/*.img.gz
+          body_path: ${{ github.workspace }}/configs/
+          fail_on_unmatched_files: true
